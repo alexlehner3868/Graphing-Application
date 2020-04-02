@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <stdio.h>
 	
 #define WIDTH 320
 #define HEIGHT 240
@@ -26,20 +27,27 @@ int main(void) {
 	// y= ax^3 + bx^2 +cx +d
 	int a, b, c, d;
 	
-	a= 0; 
+	a= 1; 
 	b=0;
-	c=5;
+	c=0;
 	d=0;
-	double y[320];
-	int x =-160;
-
-	for(int i=0; i<320; i++){
-		//y[i] = a * pow(x,3) + b*pow(x,2) + c*x +d;
+	double y[200];
+	int x =-100;
+	
+	int x3=0, x2=0, x1=0;
+	for(int i=0; i<200; i++){
+		for(int j= a; j>0; j--){
+			x3 *= x;
+		}
+		for(int j= b; j>0; j--){
+			x2 *= x;
+		}
+		y[i] = x3*a + x2*b + c*x +d;
 		x++;
 	}
 	
-	for(int i=1; i <320; i++){
-		// draw_line(i-1, y[i-1], i, y[i], 0x001F);   // this line is blue
+	for(int i=1; i <200; i++){
+		draw_line(i-1, y[i-1]+120, i, y[i]+120, 0x001F);   // this line is blue
 	}
 	
 	
