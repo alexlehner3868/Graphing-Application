@@ -6,7 +6,7 @@
 	
 #define WIDTH 320
 #define HEIGHT 240
-
+#define AXIS  120
 #define BLANK 0x0000
 
 void clear_screen();
@@ -26,16 +26,24 @@ int main(void) {
     clear_screen();
 	// y= ax^3 + bx^2 +cx +d
 	int a, b, c, d;
-	
-	a= 1; 
-	b=0;
+	//draw axis
+	draw_line(0, AXIS, WIDTH, AXIS, 0xFFFF); //x-axis
+	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0xFFFF); //y-axis
+	a= 0; 
+	b=1;
 	c=0;
-	d=0;
-	double y[200];
-	int x =-100;
-	
-	int x3=0, x2=0, x1=0;
-	for(int i=0; i<200; i++){
+	d=10;
+	double y[320];
+	int x =-160;
+	int ymax =0;
+	int x3=0, x2=0;
+	if(a !=0){
+		x3 =1;
+	}
+	if(b !=0){
+		x2 =1;
+	}
+	for(int i=0; i<320; i++){
 		for(int j= a; j>0; j--){
 			x3 *= x;
 		}
@@ -44,17 +52,26 @@ int main(void) {
 		}
 		y[i] = x3*a + x2*b + c*x +d;
 		x++;
+		y[i] = AXIS - y[i];
+		if(abs(y[i]) >ymax){
+			ymax = abs(y[i]);
+		}
+		
 	}
-	
-	for(int i=1; i <200; i++){
-		draw_line(i-1, y[i-1]+120, i, y[i]+120, 0x001F);   // this line is blue
-	}
-	
-	
-   
-    
 
+	for(int i=1; i <320; i++){
+		if(y[i] >= 0 && y[i] <= 240){		
+			draw_line(i-1, y[i-1], i, y[i], 0x001F);   // this line is blue
+		}else if(y[i] <0){
+			y[i] =240;
+		}else{
+			y[i] = 0;
+		}
+	}
+	
+ 
 }
+	
 
 void clear_screen() {
     // loop through entire buffer
