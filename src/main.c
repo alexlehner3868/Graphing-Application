@@ -1,7 +1,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
-
+#include <math.h>
+	
 #define WIDTH 320
 #define HEIGHT 240
 
@@ -17,62 +18,34 @@ void swap(int *, int *);
 volatile int pixel_buffer_start; // global variable
 
 int main(void) {
-    volatile int *pixel_ctrl_ptr = (int *)0xFF203020;
-    // declare other variables
-    const int N = 8; // number of rectangles
-    const int width = 5; const int height = 5;
-    int x[N]; int y[N]; // coordinates of each rectangle
-    int x_step[N]; int y_step[N]; // step direction of each rectangle
-    int color[N]; // color of each box
-    // initialize location and direction of rectangles
-    srand(time(NULL)); // use time as seed for `rand()`
-    for (int i = 0; i < N; i++) {
-        x[i] = rand() % (WIDTH - width);
-        y[i] = rand() % (HEIGHT - height);
-        x_step[i] = 2*(rand() % 2) - 1;
-        y_step[i] = 2*(rand() % 2) - 1;
-        color[i] = rand() % 0xFFFF;
-    }
-
-    /* set front pixel buffer to start of FPGA On-chip memory */
-    *(pixel_ctrl_ptr + 1) = 0xC8000000; // first store the address in the
-                                        // back buffer
-    /* now, swap the front/back buffers, to set the front buffer location */
-    wait_for_vsync();
-    /* initialize a pointer to the pixel buffer, used by drawing functions */
+     volatile int * pixel_ctrl_ptr = (int *)0xFF203020;
+    /* Read location of the pixel buffer from the pixel buffer controller */
     pixel_buffer_start = *pixel_ctrl_ptr;
-    clear_screen(); // pixel_buffer_start points to the pixel buffer
-    /* set back pixel buffer to start of SDRAM memory */
-    *(pixel_ctrl_ptr + 1) = 0xC0000000;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
 
-    while (true) {
-        /* Erase any boxes and lines that were drawn in the last iteration */
-        clear_screen();
+    clear_screen();
+	// y= ax^3 + bx^2 +cx +d
+	int a, b, c, d;
+	
+	a= 0; 
+	b=0;
+	c=5;
+	d=0;
+	double y[320];
+	int x =-160;
 
-        // code for drawing the boxes and lines
-        for (int i = 0; i < N; i++) {
-            // draw line
-            draw_line(x[i] + width / 2, y[i] + height / 2,
-                      x[(i + 1) % N] + width / 2, y[(i + 1) % N] + height / 2,
-                      0xFFFF - color[i]);
-            draw_rect(x[i], y[i], width, height, color[i]); // draw box
-        }
-        // code for updating the locations of boxes
-        for (int i = 0; i < N; i++) {
-            // update location of box
-            x[i] += x_step[i];
-            y[i] += y_step[i];
-            // update direction if needed
-            if (x[i] == 0 || x[i] == WIDTH - width)
-                x_step[i] *= -1;
-            if (y[i] == 0 || y[i] == HEIGHT - height)
-                y_step[i] *= -1;
-        }
+	for(int i=0; i<320; i++){
+		//y[i] = a * pow(x,3) + b*pow(x,2) + c*x +d;
+		x++;
+	}
+	
+	for(int i=1; i <320; i++){
+		// draw_line(i-1, y[i-1], i, y[i], 0x001F);   // this line is blue
+	}
+	
+	
+   
+    
 
-        wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-    }
 }
 
 void clear_screen() {
@@ -90,14 +63,6 @@ void wait_for_vsync() {
     while (*(pixel_ctrl_ptr + 3) & 1); // wait until S bit is 0
 }
 
-void draw_rect(int x, int y, int width, int height, short int color) {
-    // loop through coordinates of rectangle
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-            plot_pixel(x + i, y + j, color); // plot pixel
-        }
-    }
-}
 
 void draw_line(int x0, int y0, int x1, int y1, short int color) {
     // check if line is steep
