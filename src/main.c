@@ -15,7 +15,7 @@ void draw_rect(int, int, int, int, short int);
 void draw_line(int, int, int, int, short int);
 void plot_pixel(int, int, short int);
 void swap(int *, int *);
-
+int power(int base, int exponent);
 volatile int pixel_buffer_start; // global variable
 
 int main(void) {
@@ -24,49 +24,39 @@ int main(void) {
     pixel_buffer_start = *pixel_ctrl_ptr;
 
     clear_screen();
-	// y= ax^3 + bx^2 +cx +d
-	int a, b, c, d;
+
 	//draw axis
 	draw_line(0, AXIS, WIDTH, AXIS, 0xFFFF); //x-axis
 	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0xFFFF); //y-axis
+	// y= ax^3 + bx^2 +cx +d
+	int a, b, c, d;
+//y-axis
 	a= 0; 
 	b=1;
 	c=0;
-	d=10;
+	d=0;
 	double y[320];
-	int x =-160;
+	double x =-20;
 	int ymax =0;
-	int x3=0, x2=0;
-	if(a !=0){
-		x3 =1;
-	}
-	if(b !=0){
-		x2 =1;
-	}
+	double temp;
 	for(int i=0; i<320; i++){
-		for(int j= a; j>0; j--){
-			x3 *= x;
-		}
-		for(int j= b; j>0; j--){
-			x2 *= x;
-		}
-		y[i] = x3*a + x2*b + c*x +d;
-		x++;
-		y[i] = AXIS - y[i];
-		if(abs(y[i]) >ymax){
-			ymax = abs(y[i]);
-		}
 		
+    	temp = (a * power(x,3)) + (b * power(x,2)) + c*x + d;
+    	y[i] = (int)(temp);
+    
+	  	y[i] = 120 - y[i];
+
+		x= x+0.1254;
 	}
 
-	for(int i=1; i <320; i++){
+	for(int i=1; i <320; i++){	
+		if(i%8==0){ 
+			draw_line(i, 118, i, 122, 0xFFFF);
+		}
 		if(y[i] >= 0 && y[i] <= 240){		
 			draw_line(i-1, y[i-1], i, y[i], 0x001F);   // this line is blue
-		}else if(y[i] <0){
-			y[i] =240;
-		}else{
-			y[i] = 0;
 		}
+		
 	}
 	
  
@@ -88,6 +78,13 @@ void wait_for_vsync() {
     while (*(pixel_ctrl_ptr + 3) & 1); // wait until S bit is 0
 }
 
+int power(int base, int exponent){
+  int result=1;
+  for (int i=exponent; i>0; i--){
+    result = result * base;
+  }
+  return result;
+}
 
 void draw_line(int x0, int y0, int x1, int y1, short int color) {
     // check if line is steep
