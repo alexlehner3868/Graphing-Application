@@ -31,24 +31,70 @@ int main(void) {
 	// y= ax^3 + bx^2 +cx +d
 	int a, b, c, d;
 //y-axis
-	a= 0; 
-	b=1;
-	c=0;
+	a= 0;  //NOTE: BREAKS IF A IS GREATER THAN 2
+	b=0;
+	c=1;
 	d=0;
 	double y[320];
-	double x =-20;
+	
 	int ymax =0;
 	double temp;
-	for(int i=0; i<320; i++){
+	
+	//calculate control points
+	double p[4];
+	double x = -20;
+	if(a!=0){ //cubic function
+		//calculate the control points
+		for(int i=0; i < 4; i++){
+			p[i] = (a * power(x,3)) + (b * power(x,2)) + c*x + d;
+			x=x+10;
+		}
+		x=-20;
+		//calculate the points using Bezier Curves
+		for(int i=0; i <320; i++){
+			y[i] = power((1-x),3)*p[0];
+			y[i] += 3* x * power((1-x), 2) *p[1];
+			y[i] += 3 * power(x,2) * (1-x) * p[2];
+			y[i] += power(x,3) *p[3];
+			y[i] /=1000000;
+			y[i] =120 - y[i];	
+			y[i] = (int) y[i];
+			x= x+0.1254;
+		}
+	}else if(b!=0){ //quad 
+		//calculate control points
+		for(int i=0; i < 3; i++){
+			p[i] = (b * power(x,2)) + c*x + d;
+			x=x+13;
+		}
+		x=-20;
+		//calculate the points using Bezier Curves
+		for(int i=0; i <320; i++){
+			y[i] = power((1-x),2)*p[0];
+			y[i] += 2* x * (1-x)*p[1];
+			y[i] += power(x,2) *p[2];
+			y[i] /=10000;
+			y[i] =120 - y[i];	
+			y[i] = (int) y[i];
+			x= x+0.1254;
+		}
 		
-    	temp = (a * power(x,3)) + (b * power(x,2)) + c*x + d;
-    	y[i] = (int)(temp);
-    
-	  	y[i] = 120 - y[i];
-
-		x= x+0.1254;
+	}else if(c!=0){ //linear
+		for(int i=0; i <320; i++){
+		 	y[i] = c*x + d;
+			y[i] =120 - y[i];	
+			x= x+0.1254;
+		}
+	}else if (d!=0){ //const
+		for(int i=0; i <320; i++){
+		 	y[i] = d;
+			
+		}
 	}
-
+	
+	
+	
+			  
 	for(int i=1; i <320; i++){	
 		if(i%8==0){ 
 			draw_line(i, 118, i, 122, 0xFFFF);
