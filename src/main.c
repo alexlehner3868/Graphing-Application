@@ -56,35 +56,40 @@ int main(void) {
 			byte2 = byte3;
 			byte3 = PS2_data & 0xFF;
 		}
-		
-		if(byte3 == 'a'){
-			changeA = true;
-		}else if(byte3 == 'b'){
+		//the letter of the coefficient to be changd is inputted 
+		if(byte3 == 0x1C){ //A -> x^3
+			changeA = true;	
+		}else if(byte3 == 0x32){ //B -> x^2
 			changeB = true;
-		}else if(byte3 == 'c'){
+		}else if(byte3 == 0x21){ //C -> x
 			changeC = true;
-		}else if(byte3 == 'd'){
+		}else if(byte3 == 0x23){ //D -> constant
 			changeD = true;
 		}
-		if(changeA && byte3 >=0 && byte3 <=9){
-			a= byte3;
-			changed = true;
-			changeA = false;
-		} else if(changeB && byte3 >=0 && byte3 <=9){
-			b= byte3;
-			changed = true;
-			changeB = false;
-		} else if(changeC && byte3 >=0 && byte3 <=9){
-			c= byte3;
-			changed = true;
-			changeC = false;
-		} else if(changeD && byte3 >=0 && byte3 <=9){
-			d= byte3;
-			changed = true;
-			changeD = false;
+		
+		//A number between 0-9 is inputted
+		if(byte3 == 0x45 || byte3 == 0x16 ||byte3 == 0x1E ||byte3 == 0x26 ||
+		  byte3 == 0x25 ||byte3 == 0x2E||byte3 == 0x36 ||byte3 == 0x3D ||
+		  byte3 == 0x3E ||byte3 == 0x46){ 
+			if(changeA){
+				a= byte3;
+				changed = true;
+				changeA = false;
+			}else if(changeB){
+				b= byte3;
+				changed = true;
+				changeB = false;
+			}else if(changeC){
+				c= byte3;
+				changed = true;
+				changeC = false;
+			}else if(changeD){
+				d= byte3;
+				changed = true;
+				changeD = false;
+			}
 		}
 		
-	
 		x=-20;
 		if(a!=0){ //cubic function
 			//calculate the control points
@@ -144,9 +149,10 @@ int main(void) {
 		}
 
 	if(changed){
-			clear_screen();
-			draw_axis();
-			draw_graph(y);
+		clear_screen();
+		draw_axis();
+		draw_graph(y);
+		changed = false;
 		}
 	
 	}
