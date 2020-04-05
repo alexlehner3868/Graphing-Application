@@ -3,12 +3,14 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
-	
+
+//Define constants 
 #define WIDTH 320
 #define HEIGHT 240
 #define AXIS  120
 #define BLANK 0x0000
 
+//function declarations 
 void clear_screen();
 void wait_for_vsync();
 void draw_rect(int, int, int, int, short int);
@@ -18,35 +20,61 @@ void swap(int *, int *);
 void draw_graph(double y[320]);
 void draw_axis();
 int power(int base, int exponent);
+int upper_hex_bits(int a);
+int hex_num(int num);
+int lower_hex_bits(int b, int c);
+int get_binary_num(int num);
+
+
 volatile int pixel_buffer_start; // global variable
 
 int main(void) {
-     volatile int * pixel_ctrl_ptr = (int *)0xFF203020;
+	
+	//get pointers to I/O devices
+    volatile int * pixel_ctrl_ptr = (int *)0xFF203020;
 	volatile int * PS2_ptr = (int *) 0xFF200100;  // PS/2 port address
-    int PS2_data, RVALID;
+	volatile int * HEX3_HEX0_ptr = (int *) 0xFF200020; // HEX3_HEX0 address
+	volatile int * HEX6_HEX4_ptr = (int *) 0xFF200030; // HEX6_HEX4 address
+	volatile int * LED_ptr = (int *) 0xFF200000; // LED address
+	
+	
+	
+	//initialize hex displays 
+	int HEX_bits = 0x00000000; // initial pattern for HEX displays
+	*(HEX6_HEX4_ptr) = HEX_bits; 
+	*(HEX3_HEX0_ptr) = HEX_bits; 
+	
 	/* Read location of the pixel buffer from the pixel buffer controller */
     pixel_buffer_start = *pixel_ctrl_ptr;
-	// y= ax^3 + bx^2 +cx +d
-		int a, b, c, d;
-		a= 0;  
-		b=0; 
-		c=0;
-		d=9;
-		double y[320];
-		unsigned char byte1 = 0;
-		unsigned char byte2 = 0;
-		unsigned char byte3 = 0;
 	
-		double p[4];
-		double x;
-		bool changed = false;
-		bool changeA = false;
-		bool changeB = false;
-		bool changeC = false;
-		bool changeD = false;
-		bool erase = false;
-		clear_screen();
-		draw_axis();
+	//variables related to the equation: y= ax^3 + bx^2 +cx +d
+	int a= 0;  
+	int b=0; 
+	int c=0;
+	int d=0;
+	double y[320];
+	double p[4]; //stores control values of bezier curves
+	double x; //a counter variables 
+	
+	//variables for keyboard input
+	int PS2_data, RVALID;
+	unsigned char byte1 = 0;
+	unsigned char byte2 = 0;
+	unsigned char byte3 = 0;
+	
+	//booleans to update coefficents values
+	bool changed = false;
+	bool changeA = false;
+	bool changeB = false;
+	bool changeC = false;
+	bool changeD = false;
+	bool erase = false;
+	
+	//clear screen and draw the axis
+	clear_screen();
+	draw_axis();
+	
+	//program contstantly loops 
 	while(1){
 		
 		PS2_data = *(PS2_ptr);	// read the Data register in the PS/2 port
@@ -58,6 +86,7 @@ int main(void) {
 			byte2 = byte3;
 			byte3 = PS2_data & 0xFF;
 		}
+		
 		//the letter of the coefficient to be changd is inputted 
 		if(byte3 == 0x1C){ //A -> x^3
 			changeA = true;	
@@ -97,14 +126,27 @@ int main(void) {
 			}
 		}
 		
+		//update HEX and LED values 
+		HEX_bits = upper_hex_bits(a);
+		*(HEX6_HEX4_ptr) = HEX_bits; 
+		HEX_bits = lower_hex_bits(b, c);
+		*(HEX3_HEX0_ptr) = HEX_bits;
+		*(LED_ptr) = get_binary_num(d); 
+		
+		//(re)set counter variable to 20
 		x=-20;
+		
+		//create all the points of the curve 
 		if(a!=0){ //cubic function
+			
 			//calculate the control points
 			for(int i=0; i < 4; i++){
 				p[i] = (a * power(x,3)) + (b * power(x,2)) + c*x + d;
 				x=x+10;
 			}
+			
 			x=-20;
+			
 			//calculate the points using Bezier Curves
 			for(int i=0; i <320; i++){
 				y[i] = power((1-x),3)*p[0];
@@ -114,53 +156,123 @@ int main(void) {
 				if(a<2){
 					y[i] /=1000000;
 				}else{
-					y[i] /=5000000;
+					y[i] /=7000000;
 				}
 				y[i] =120 - y[i];	
 				y[i] = (int) y[i];
 				x= x+0.1254;
 			}
+			
 		}else if(b!=0){ //quad 
+			
 			//calculate control points
 			for(int i=0; i < 3; i++){
 				p[i] = (b * power(x,2)) + c*x + d;
 				x=x+13;
 			}
+			
 			x=-20;
+			
 			//calculate the points using Bezier Curves
 			for(int i=0; i <320; i++){
 				y[i] = power((1-x),2)*p[0];
 				y[i] += 2* x * (1-x)*p[1];
 				y[i] += power(x,2) *p[2];	
-				
-					y[i] /=20000;
-				
+				y[i] /=70000;
 				y[i] =120 - y[i];	
 				y[i] = (int) y[i];
 				x= x+0.1254;
 			}
 
 		}else if(c!=0){ //linear
+			
+			//get points on the line
 			for(int i=0; i <320; i++){
 				y[i] = c*x + d;
 				y[i] =120 - y[i];	
 				x= x+0.1254;
 			}
+			
 		}else if (d!=0){ //const
+			
+			//set all y values = to d
 			for(int i=0; i <320; i++){
 				y[i] = 120 -d;
-
 			}
 		}
 
-	if(changed){
-		
+	//if a coefficient has been changed redraw the screen
+	if(changed){		
 		clear_screen();
 		draw_axis();
 		draw_graph(y);
 		changed = false;
 	}
 	
+	}
+}
+
+int upper_hex_bits(int a){
+	int HexCode = 0x77; //A 
+	HexCode = HexCode<<8; //shift A over to next HEX
+	HexCode +=hex_num(a); //get hex code of A and add it in
+	return HexCode;
+}
+
+int lower_hex_bits(int b, int c){
+	int HexCode = 0x7C; //B
+	HexCode = HexCode<<24; //shift B over 
+	HexCode += hex_num(b)<< 16;  //get Hex code of B and shift it 
+	HexCode += (0x39 <<8); //C
+	HexCode += hex_num(c); //add in C
+	return HexCode;
+}
+
+int hex_num(int num){
+	if(num==0x45 || num==0){ //0
+		return 0x3F;
+	}else if(num==0x16){ //1
+		 return 0b00000110;
+	}else if(num==0x1E){ //2
+		 return 0b01011011;
+	}else if(num==0x26){ //3
+		return 0b01001111;
+	}else if(num==0x25){ //4
+		return 0b01100110;
+	}else if(num==0x2E){ //5
+		return 0b01101101;
+	}else if(num==0x36){ //6
+		return 0b01111101;
+	}else if(num==0x3D){ //7
+		return 0b00000111;
+	}else if(num==0x3E){ //8
+		return 0b01111111;
+	}else if(num==0x46){ //9
+		return 0b01100111;
+	}
+}
+
+int get_binary_num(int num){
+	if(num==0x45 || num==0){ //0
+		return 0x0;
+	}else if(num==0x16){ //1
+		 return 0x1;
+	}else if(num==0x1E){ //2
+		 return 0x2;
+	}else if(num==0x26){ //3
+		return 0x3;
+	}else if(num==0x25){ //4
+		return 0x4;
+	}else if(num==0x2E){ //5
+		return 0x5;
+	}else if(num==0x36){ //6
+		return 0x6;
+	}else if(num==0x3D){ //7
+		return 0x7;
+	}else if(num==0x3E){
+		return 0x8;
+	}else if(num==0x46){
+		return 0x9;
 	}
 }
 
