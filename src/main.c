@@ -27,6 +27,11 @@ int get_binary_num(int num);
 
 
 volatile int pixel_buffer_start; // global variable
+//INSTRUCTIONS: use the PS2 keyboard to set the value of coefficents. 
+//Input the captial letter of the coefficent first (A->x^3, B -> x^2, C->x, D->constant)
+//Then use the PS2 keyboard to input a number (0-9) for the coefficent
+//Look at the VGA to see the graph
+//The current coefficents A, B, C are displayed on the HEXs and D is on the LEDs
 
 int main(void) {
 	
