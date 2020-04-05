@@ -15,86 +15,148 @@ void draw_rect(int, int, int, int, short int);
 void draw_line(int, int, int, int, short int);
 void plot_pixel(int, int, short int);
 void swap(int *, int *);
+void draw_graph(double y[320]);
+void draw_axis();
 int power(int base, int exponent);
 volatile int pixel_buffer_start; // global variable
 
 int main(void) {
      volatile int * pixel_ctrl_ptr = (int *)0xFF203020;
-    /* Read location of the pixel buffer from the pixel buffer controller */
+	volatile int * PS2_ptr = (int *) 0xFF200100;  // PS/2 port address
+    int PS2_data, RVALID;
+	/* Read location of the pixel buffer from the pixel buffer controller */
     pixel_buffer_start = *pixel_ctrl_ptr;
-
-    clear_screen();
-
-	//draw axis
-	draw_line(0, AXIS, WIDTH, AXIS, 0xFFFF); //x-axis
-	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0xFFFF); //y-axis
 	// y= ax^3 + bx^2 +cx +d
-	int a, b, c, d;
-//y-axis
-	a= 0;  //NOTE: BREAKS IF A IS GREATER THAN 2
-	b=0;
-	c=1;
-	d=0;
-	double y[320];
+		int a, b, c, d;
+		a= 0;  
+		b=0; 
+		c=0;
+		d=9;
+		double y[320];
+		unsigned char byte1 = 0;
+		unsigned char byte2 = 0;
+		unsigned char byte3 = 0;
 	
-	int ymax =0;
-	double temp;
-	
-	//calculate control points
-	double p[4];
-	double x = -20;
-	if(a!=0){ //cubic function
-		//calculate the control points
-		for(int i=0; i < 4; i++){
-			p[i] = (a * power(x,3)) + (b * power(x,2)) + c*x + d;
-			x=x+10;
-		}
-		x=-20;
-		//calculate the points using Bezier Curves
-		for(int i=0; i <320; i++){
-			y[i] = power((1-x),3)*p[0];
-			y[i] += 3* x * power((1-x), 2) *p[1];
-			y[i] += 3 * power(x,2) * (1-x) * p[2];
-			y[i] += power(x,3) *p[3];
-			y[i] /=1000000;
-			y[i] =120 - y[i];	
-			y[i] = (int) y[i];
-			x= x+0.1254;
-		}
-	}else if(b!=0){ //quad 
-		//calculate control points
-		for(int i=0; i < 3; i++){
-			p[i] = (b * power(x,2)) + c*x + d;
-			x=x+13;
-		}
-		x=-20;
-		//calculate the points using Bezier Curves
-		for(int i=0; i <320; i++){
-			y[i] = power((1-x),2)*p[0];
-			y[i] += 2* x * (1-x)*p[1];
-			y[i] += power(x,2) *p[2];
-			y[i] /=10000;
-			y[i] =120 - y[i];	
-			y[i] = (int) y[i];
-			x= x+0.1254;
+		double p[4];
+		double x;
+		bool changed = false;
+		bool changeA = false;
+		bool changeB = false;
+		bool changeC = false;
+		bool changeD = false;
+		clear_screen();
+	while(1){
+		
+		PS2_data = *(PS2_ptr);	// read the Data register in the PS/2 port
+		RVALID = (PS2_data & 0x8000);	// extract the RVALID field
+		if (RVALID != 0)
+		{
+			/* always save the last three bytes received */
+			byte1 = byte2;
+			byte2 = byte3;
+			byte3 = PS2_data & 0xFF;
 		}
 		
-	}else if(c!=0){ //linear
-		for(int i=0; i <320; i++){
-		 	y[i] = c*x + d;
-			y[i] =120 - y[i];	
-			x= x+0.1254;
+		if(byte3 == 'a'){
+			changeA = true;
+		}else if(byte3 == 'b'){
+			changeB = true;
+		}else if(byte3 == 'c'){
+			changeC = true;
+		}else if(byte3 == 'd'){
+			changeD = true;
 		}
-	}else if (d!=0){ //const
-		for(int i=0; i <320; i++){
-		 	y[i] = d;
-			
+		if(changeA && byte3 >=0 && byte3 <=9){
+			a= byte3;
+			changed = true;
+			changeA = false;
+		} else if(changeB && byte3 >=0 && byte3 <=9){
+			b= byte3;
+			changed = true;
+			changeB = false;
+		} else if(changeC && byte3 >=0 && byte3 <=9){
+			c= byte3;
+			changed = true;
+			changeC = false;
+		} else if(changeD && byte3 >=0 && byte3 <=9){
+			d= byte3;
+			changed = true;
+			changeD = false;
 		}
+		
+	
+		x=-20;
+		if(a!=0){ //cubic function
+			//calculate the control points
+			for(int i=0; i < 4; i++){
+				p[i] = (a * power(x,3)) + (b * power(x,2)) + c*x + d;
+				x=x+10;
+			}
+			x=-20;
+			//calculate the points using Bezier Curves
+			for(int i=0; i <320; i++){
+				y[i] = power((1-x),3)*p[0];
+				y[i] += 3* x * power((1-x), 2) *p[1];
+				y[i] += 3 * power(x,2) * (1-x) * p[2];
+				y[i] += power(x,3) *p[3];
+				if(a<2){
+					y[i] /=1000000;
+				}else{
+					y[i] /=5000000;
+				}
+				y[i] =120 - y[i];	
+				y[i] = (int) y[i];
+				x= x+0.1254;
+			}
+		}else if(b!=0){ //quad 
+			//calculate control points
+			for(int i=0; i < 3; i++){
+				p[i] = (b * power(x,2)) + c*x + d;
+				x=x+13;
+			}
+			x=-20;
+			//calculate the points using Bezier Curves
+			for(int i=0; i <320; i++){
+				y[i] = power((1-x),2)*p[0];
+				y[i] += 2* x * (1-x)*p[1];
+				y[i] += power(x,2) *p[2];	
+				if(b>=9){
+					y[i] /=20000;
+				}else{
+					y[i] /=10000;
+				}
+				y[i] =120 - y[i];	
+				y[i] = (int) y[i];
+				x= x+0.1254;
+			}
+
+		}else if(c!=0){ //linear
+			for(int i=0; i <320; i++){
+				y[i] = c*x + d;
+				y[i] =120 - y[i];	
+				x= x+0.1254;
+			}
+		}else if (d!=0){ //const
+			for(int i=0; i <320; i++){
+				y[i] = 120 -d;
+
+			}
+		}
+
+	if(changed){
+			clear_screen();
+			draw_axis();
+			draw_graph(y);
+		}
+	
 	}
-	
-	
-	
-			  
+}
+
+void draw_axis(){
+	draw_line(0, AXIS, WIDTH, AXIS, 0xFFFF); //x-axis
+	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0xFFFF); //y-axis
+}
+void draw_graph(double y[320]){
 	for(int i=1; i <320; i++){	
 		if(i%8==0){ 
 			draw_line(i, 118, i, 122, 0xFFFF);
@@ -102,13 +164,9 @@ int main(void) {
 		if(y[i] >= 0 && y[i] <= 240){		
 			draw_line(i-1, y[i-1], i, y[i], 0x001F);   // this line is blue
 		}
-		
-	}
-	
- 
-}
-	
 
+	}
+}
 void clear_screen() {
     // loop through entire buffer
     for (int x = 0; x < WIDTH; x++) {
