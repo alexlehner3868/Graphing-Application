@@ -44,7 +44,9 @@ int main(void) {
 		bool changeB = false;
 		bool changeC = false;
 		bool changeD = false;
+		bool erase = false;
 		clear_screen();
+		draw_axis();
 	while(1){
 		
 		PS2_data = *(PS2_ptr);	// read the Data register in the PS/2 port
@@ -65,6 +67,11 @@ int main(void) {
 			changeC = true;
 		}else if(byte3 == 0x23){ //D -> constant
 			changeD = true;
+		}else if(byte3 == 0x66) { //backspace to clear graph
+			a= 0;
+			b=0;
+			c=0;
+			d=0; //NOT FINISHED ERASE
 		}
 		
 		//A number between 0-9 is inputted
@@ -125,11 +132,9 @@ int main(void) {
 				y[i] = power((1-x),2)*p[0];
 				y[i] += 2* x * (1-x)*p[1];
 				y[i] += power(x,2) *p[2];	
-				if(b>=9){
+				
 					y[i] /=20000;
-				}else{
-					y[i] /=10000;
-				}
+				
 				y[i] =120 - y[i];	
 				y[i] = (int) y[i];
 				x= x+0.1254;
@@ -149,11 +154,12 @@ int main(void) {
 		}
 
 	if(changed){
+		
 		clear_screen();
 		draw_axis();
 		draw_graph(y);
 		changed = false;
-		}
+	}
 	
 	}
 }
@@ -168,7 +174,7 @@ void draw_graph(double y[320]){
 			draw_line(i, 118, i, 122, 0xFFFF);
 		}
 		if(y[i] >= 0 && y[i] <= 240){		
-			draw_line(i-1, y[i-1], i, y[i], 0x001F);   // this line is blue
+			draw_line(i-1, y[i-1], i, y[i], 0x07E0);   // this line is blue
 		}
 
 	}
