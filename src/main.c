@@ -25,13 +25,15 @@ int hex_num(int num);
 int lower_hex_bits(int b, int c);
 int get_binary_num(int num);
 
-
-volatile int pixel_buffer_start; // global variable
 //INSTRUCTIONS: use the PS2 keyboard to set the value of coefficents. 
 //Input the captial letter of the coefficent first (A->x^3, B -> x^2, C->x, D->constant)
 //Then use the PS2 keyboard to input a number (0-9) for the coefficent
 //Look at the VGA to see the graph
 //The current coefficents A, B, C are displayed on the HEXs and D is on the LEDs
+//The X axis' ticks are a change by 1
+//the y axis ticks are a change by 10
+
+volatile int pixel_buffer_start; // global variable
 
 int main(void) {
 	
@@ -41,8 +43,6 @@ int main(void) {
 	volatile int * HEX3_HEX0_ptr = (int *) 0xFF200020; // HEX3_HEX0 address
 	volatile int * HEX6_HEX4_ptr = (int *) 0xFF200030; // HEX6_HEX4 address
 	volatile int * LED_ptr = (int *) 0xFF200000; // LED address
-	
-	
 	
 	//initialize hex displays 
 	int HEX_bits = 0x00000000; // initial pattern for HEX displays
@@ -140,6 +140,12 @@ int main(void) {
 		
 		//(re)set counter variable to 20
 		x=-20;
+		
+		//update the values of the coefficents to the binary #a
+		a = get_binary_num(a);
+		b = get_binary_num(b);
+		c = get_binary_num(c);
+		d = get_binary_num(d);
 		
 		//create all the points of the curve 
 		if(a!=0){ //cubic function
@@ -284,12 +290,20 @@ int get_binary_num(int num){
 void draw_axis(){
 	draw_line(0, AXIS, WIDTH, AXIS, 0xFFFF); //x-axis
 	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0xFFFF); //y-axis
-}
-void draw_graph(double y[320]){
-	for(int i=1; i <320; i++){	
+	//ticks on x-axis
+	for(int i=0; i<320; i++){
 		if(i%8==0){ 
 			draw_line(i, 118, i, 122, 0xFFFF);
 		}
+	}
+	for(int i=0; i < 240; i++){
+		if(i%10==0){
+			draw_line(157, i, 163, i, 0xFFFF);
+		}
+	}
+}
+void draw_graph(double y[320]){
+	for(int i=1; i <320; i++){	
 		if(y[i] >= 0 && y[i] <= 240){		
 			draw_line(i-1, y[i-1], i, y[i], 0x07E0);   // this line is blue
 		}
