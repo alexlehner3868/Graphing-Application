@@ -33,6 +33,11 @@ short int make_color(short int r, short int g, short int b);
 //The current coefficents A, B, C are displayed on the HEXs and D is on the LEDs
 //The X axis' ticks are a change by 1
 //the y axis ticks are a change by 10
+//Key 0 changes the intensity of the blue in the graph
+//key 1 changes the intensity of the green in the graph
+//Key 2 changes the intensity of the red in the graph
+//Key 3 clears the graph and resets all coefficients to 0
+
 
 volatile int pixel_buffer_start; // global variable
 
@@ -143,22 +148,22 @@ int main(void) {
 		KEY_value = *(KEY_ptr); // read the pushbutton KEY values
 		if (KEY_value != 0){ // check if any KEY was pressed
 			color_change = true;
-			if(KEY_value==1){
+			if(KEY_value==1){ //change blue
 				blue_color=blue_color+2;
 				if(blue_color==(0b11111+1)){
 					blue_color = 0;
 				}
-			}else if(KEY_value==2){
+			}else if(KEY_value==2){ //change green
 				green_color = green_color +2;
 				if(green_color==(0b111111+1)){
 					green_color =0;
 				}
-			}else if(KEY_value==4){
+			}else if(KEY_value==4){ //change red
 				red_color = red_color +2;
 				if(red_color==(1+0b11111)){
 					red_color =0;
 				}
-			}else if(KEY_value == 8){
+			}else if(KEY_value == 8){ //reset 
 				short int red_color =  0;
 				short int blue_color = 0;
 				short int green_color =0;
@@ -248,13 +253,15 @@ int main(void) {
 			for(int i=0; i <320; i++){
 				y[i] = 120 -d;
 			}
-		}else{
+		}else{ //all coefs are 0
 			for(int i=0; i <320; i++){
-				y[i]=-1;
+				y[i]=-1; //-1 sets to drawing off
 			}
 		}
 	
+	//get the value for color
 	color = make_color(red_color, green_color, blue_color);
+		
 	//if a coefficient has been changed redraw the screen
 	if(changed){		
 		clear_screen();
@@ -263,6 +270,7 @@ int main(void) {
 		color_change =false;
 		changed = false;
 	}
+	//if only color is changed redraw graph on top of previous graph
 	if(!changed && color_change){
 		draw_graph(y, color);
 		color_change = false;
@@ -271,7 +279,8 @@ int main(void) {
 }
 
 short int make_color(short int r, short int g, short int b){
-	short int color = (r<<11) +(g<<5) +b;
+	//combine the r,g,b values into the color code
+	short int color = (r<<11) +(g<<5) +b; 
 	return color;
 }
 int upper_hex_bits(int a){
