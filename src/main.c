@@ -8,8 +8,8 @@
 #define WIDTH 320
 #define HEIGHT 240
 #define AXIS  120
-#define BLANK 0x0000
-
+#define BLANK 0xFFFF
+#define COLOR_LENGTH 9
 //function declarations 
 void clear_screen();
 void wait_for_vsync();
@@ -17,13 +17,14 @@ void draw_rect(int, int, int, int, short int);
 void draw_line(int, int, int, int, short int);
 void plot_pixel(int, int, short int);
 void swap(int *, int *);
-void draw_graph(double y[320]);
+void draw_graph(double y[320], short int color);
 void draw_axis();
 int power(int base, int exponent);
 int upper_hex_bits(int a);
 int hex_num(int num);
 int lower_hex_bits(int b, int c);
 int get_binary_num(int num);
+short int make_color(short int r, short int g, short int b);
 
 //INSTRUCTIONS: use the PS2 keyboard to set the value of coefficents. 
 //Input the captial letter of the coefficent first (A->x^3, B -> x^2, C->x, D->constant)
@@ -43,6 +44,17 @@ int main(void) {
 	volatile int * HEX3_HEX0_ptr = (int *) 0xFF200020; // HEX3_HEX0 address
 	volatile int * HEX6_HEX4_ptr = (int *) 0xFF200030; // HEX6_HEX4 address
 	volatile int * LED_ptr = (int *) 0xFF200000; // LED address
+	volatile int * KEY_ptr = (int *)0xFF200050; // pushbutton KEY address
+	
+	
+	//color options 
+	short int color;
+	short int red_color =  0b0;
+	short int blue_color = 0b0;
+	short int green_color =0b0;
+	bool color_change;
+	
+	int KEY_value;
 	
 	//initialize hex displays 
 	int HEX_bits = 0x00000000; // initial pattern for HEX displays
@@ -92,6 +104,8 @@ int main(void) {
 			byte3 = PS2_data & 0xFF;
 		}
 		
+
+		
 		//the letter of the coefficient to be changd is inputted 
 		if(byte3 == 0x1C){ //A -> x^3
 			changeA = true;	
@@ -101,11 +115,6 @@ int main(void) {
 			changeC = true;
 		}else if(byte3 == 0x23){ //D -> constant
 			changeD = true;
-		}else if(byte3 == 0x66) { //backspace to clear graph
-			a= 0;
-			b=0;
-			c=0;
-			d=0; //NOT FINISHED ERASE
 		}
 		
 		//A number between 0-9 is inputted
@@ -130,7 +139,40 @@ int main(void) {
 				changeD = false;
 			}
 		}
-		
+		//updated color
+		KEY_value = *(KEY_ptr); // read the pushbutton KEY values
+		if (KEY_value != 0){ // check if any KEY was pressed
+			color_change = true;
+			if(KEY_value==1){
+				blue_color=blue_color+2;
+				if(blue_color==(0b11111+1)){
+					blue_color = 0;
+				}
+			}else if(KEY_value==2){
+				green_color = green_color +2;
+				if(green_color==(0b111111+1)){
+					green_color =0;
+				}
+			}else if(KEY_value==4){
+				red_color = red_color +2;
+				if(red_color==(1+0b11111)){
+					red_color =0;
+				}
+			}else if(KEY_value == 8){
+				short int red_color =  0;
+				short int blue_color = 0;
+				short int green_color =0;
+				a =0;
+				b=0;
+				c=0;
+				d=0;
+				clear_screen();
+				draw_axis();
+				changed = false;
+			}
+			while (*KEY_ptr); // wait for pushbutton KEY release
+		}
+
 		//update HEX and LED values 
 		HEX_bits = upper_hex_bits(a);
 		*(HEX6_HEX4_ptr) = HEX_bits; 
@@ -164,11 +206,7 @@ int main(void) {
 				y[i] += 3* x * power((1-x), 2) *p[1];
 				y[i] += 3 * power(x,2) * (1-x) * p[2];
 				y[i] += power(x,3) *p[3];
-				if(a<2){
-					y[i] /=1000000;
-				}else{
-					y[i] /=7000000;
-				}
+				y[i] /=900000;
 				y[i] =120 - y[i];	
 				y[i] = (int) y[i];
 				x= x+0.1254;
@@ -189,7 +227,7 @@ int main(void) {
 				y[i] = power((1-x),2)*p[0];
 				y[i] += 2* x * (1-x)*p[1];
 				y[i] += power(x,2) *p[2];	
-				y[i] /=70000;
+				y[i] /=20000;
 				y[i] =120 - y[i];	
 				y[i] = (int) y[i];
 				x= x+0.1254;
@@ -210,19 +248,32 @@ int main(void) {
 			for(int i=0; i <320; i++){
 				y[i] = 120 -d;
 			}
+		}else{
+			for(int i=0; i <320; i++){
+				y[i]=-1;
+			}
 		}
-
+	
+	color = make_color(red_color, green_color, blue_color);
 	//if a coefficient has been changed redraw the screen
 	if(changed){		
 		clear_screen();
 		draw_axis();
-		draw_graph(y);
+		draw_graph(y, color);
+		color_change =false;
 		changed = false;
 	}
-	
+	if(!changed && color_change){
+		draw_graph(y, color);
+		color_change = false;
+	}
 	}
 }
 
+short int make_color(short int r, short int g, short int b){
+	short int color = (r<<11) +(g<<5) +b;
+	return color;
+}
 int upper_hex_bits(int a){
 	int HexCode = 0x77; //A 
 	HexCode = HexCode<<8; //shift A over to next HEX
@@ -242,23 +293,23 @@ int lower_hex_bits(int b, int c){
 int hex_num(int num){
 	if(num==0x45 || num==0){ //0
 		return 0x3F;
-	}else if(num==0x16){ //1
+	}else if(num==0x16|| num==1){ //1
 		 return 0b00000110;
-	}else if(num==0x1E){ //2
+	}else if(num==0x1E|| num==2){ //2
 		 return 0b01011011;
-	}else if(num==0x26){ //3
+	}else if(num==0x26|| num==3){ //3
 		return 0b01001111;
-	}else if(num==0x25){ //4
+	}else if(num==0x25|| num==4){ //4
 		return 0b01100110;
-	}else if(num==0x2E){ //5
+	}else if(num==0x2E|| num==5){ //5
 		return 0b01101101;
-	}else if(num==0x36){ //6
+	}else if(num==0x36|| num==6){ //6
 		return 0b01111101;
-	}else if(num==0x3D){ //7
+	}else if(num==0x3D|| num==7){ //7
 		return 0b00000111;
-	}else if(num==0x3E){ //8
+	}else if(num==0x3E|| num==8){ //8
 		return 0b01111111;
-	}else if(num==0x46){ //9
+	}else if(num==0x46|| num==9){ //9
 		return 0b01100111;
 	}
 }
@@ -266,46 +317,46 @@ int hex_num(int num){
 int get_binary_num(int num){
 	if(num==0x45 || num==0){ //0
 		return 0x0;
-	}else if(num==0x16){ //1
+	}else if(num==0x16|| num==1){ //1
 		 return 0x1;
-	}else if(num==0x1E){ //2
+	}else if(num==0x1E|| num==2){ //2
 		 return 0x2;
-	}else if(num==0x26){ //3
+	}else if(num==0x26|| num==3){ //3
 		return 0x3;
-	}else if(num==0x25){ //4
+	}else if(num==0x25|| num==4){ //4
 		return 0x4;
-	}else if(num==0x2E){ //5
+	}else if(num==0x2E|| num==5){ //5
 		return 0x5;
-	}else if(num==0x36){ //6
+	}else if(num==0x36|| num==6){ //6
 		return 0x6;
-	}else if(num==0x3D){ //7
+	}else if(num==0x3D|| num==7){ //7
 		return 0x7;
-	}else if(num==0x3E){
+	}else if(num==0x3E|| num==8){
 		return 0x8;
-	}else if(num==0x46){
+	}else if(num==0x46|| num==9){
 		return 0x9;
 	}
 }
 
 void draw_axis(){
-	draw_line(0, AXIS, WIDTH, AXIS, 0xFFFF); //x-axis
-	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0xFFFF); //y-axis
+	draw_line(0, AXIS, WIDTH, AXIS, 0x0); //x-axis
+	draw_line(WIDTH/2, 0, WIDTH/2, HEIGHT, 0x0); //y-axis
 	//ticks on x-axis
 	for(int i=0; i<320; i++){
 		if(i%8==0){ 
-			draw_line(i, 118, i, 122, 0xFFFF);
+			draw_line(i, 118, i, 122, 0x0);
 		}
 	}
 	for(int i=0; i < 240; i++){
 		if(i%10==0){
-			draw_line(157, i, 163, i, 0xFFFF);
+			draw_line(157, i, 163, i, 0x0);
 		}
 	}
 }
-void draw_graph(double y[320]){
+void draw_graph(double y[320], short int color){
 	for(int i=1; i <320; i++){	
 		if(y[i] >= 0 && y[i] <= 240){		
-			draw_line(i-1, y[i-1], i, y[i], 0x07E0);   // this line is blue
+			draw_line(i-1, y[i-1], i, y[i], color);   // this line is blue
 		}
 
 	}
