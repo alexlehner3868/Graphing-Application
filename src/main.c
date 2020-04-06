@@ -10,6 +10,9 @@
 #define AXIS  120
 #define BLANK 0xFFFF
 #define COLOR_LENGTH 9
+#define BUF_SIZE 80000 // about 10 seconds of buffer (@ 8K samples/sec)
+#define BUF_THRESHOLD 96 // 75% of 128 word buffer
+	
 //function declarations 
 void clear_screen();
 void wait_for_vsync();
@@ -25,6 +28,10 @@ int hex_num(int num);
 int lower_hex_bits(int b, int c);
 int get_binary_num(int num);
 short int make_color(short int r, short int g, short int b);
+void play_wave(int y[320]);
+void put_jtag(char);
+void do_jtag(int a, int b, int c, int d);
+char get_char(int num);
 
 //INSTRUCTIONS: use the PS2 keyboard to set the value of coefficents. 
 //Input the captial letter of the coefficent first (A->x^3, B -> x^2, C->x, D->constant)
@@ -33,13 +40,10 @@ short int make_color(short int r, short int g, short int b);
 //The current coefficents A, B, C are displayed on the HEXs and D is on the LEDs
 //The X axis' ticks are a change by 1
 //the y axis ticks are a change by 10
-//Key 0 changes the intensity of the blue in the graph
-//key 1 changes the intensity of the green in the graph
-//Key 2 changes the intensity of the red in the graph
-//Key 3 clears the graph and resets all coefficients to 0
-
+//The current equation is displayed on the JTAG
 
 volatile int pixel_buffer_start; // global variable
+
 
 int main(void) {
 	
@@ -50,7 +54,6 @@ int main(void) {
 	volatile int * HEX6_HEX4_ptr = (int *) 0xFF200030; // HEX6_HEX4 address
 	volatile int * LED_ptr = (int *) 0xFF200000; // LED address
 	volatile int * KEY_ptr = (int *)0xFF200050; // pushbutton KEY address
-	
 	
 	//color options 
 	short int color;
@@ -109,7 +112,6 @@ int main(void) {
 			byte3 = PS2_data & 0xFF;
 		}
 		
-
 		
 		//the letter of the coefficient to be changd is inputted 
 		if(byte3 == 0x1C){ //A -> x^3
@@ -144,26 +146,27 @@ int main(void) {
 				changeD = false;
 			}
 		}
+		
 		//updated color
 		KEY_value = *(KEY_ptr); // read the pushbutton KEY values
 		if (KEY_value != 0){ // check if any KEY was pressed
 			color_change = true;
-			if(KEY_value==1){ //change blue
+			if(KEY_value==1){
 				blue_color=blue_color+2;
 				if(blue_color==(0b11111+1)){
 					blue_color = 0;
 				}
-			}else if(KEY_value==2){ //change green
+			}else if(KEY_value==2){
 				green_color = green_color +2;
 				if(green_color==(0b111111+1)){
 					green_color =0;
 				}
-			}else if(KEY_value==4){ //change red
+			}else if(KEY_value==4){
 				red_color = red_color +2;
 				if(red_color==(1+0b11111)){
 					red_color =0;
 				}
-			}else if(KEY_value == 8){ //reset 
+			}else if(KEY_value == 8){
 				short int red_color =  0;
 				short int blue_color = 0;
 				short int green_color =0;
@@ -253,24 +256,23 @@ int main(void) {
 			for(int i=0; i <320; i++){
 				y[i] = 120 -d;
 			}
-		}else{ //all coefs are 0
+		}else{
 			for(int i=0; i <320; i++){
-				y[i]=-1; //-1 sets to drawing off
+				y[i]=-1;
 			}
 		}
 	
-	//get the value for color
 	color = make_color(red_color, green_color, blue_color);
-		
 	//if a coefficient has been changed redraw the screen
 	if(changed){		
 		clear_screen();
 		draw_axis();
 		draw_graph(y, color);
+		//play_wave(y);
+		do_jtag(a, b, c, d);
 		color_change =false;
 		changed = false;
 	}
-	//if only color is changed redraw graph on top of previous graph
 	if(!changed && color_change){
 		draw_graph(y, color);
 		color_change = false;
@@ -278,9 +280,103 @@ int main(void) {
 	}
 }
 
+void put_jtag( char c ){ //Function taken from intel FPGA University Program Manual 
+	volatile int * JTAG_UART_ptr = (int *) 0xFF201000; // JTAG UART address
+	int control;
+	control = *(JTAG_UART_ptr + 1); // read the JTAG_UART control register
+	if (control & 0xFFFF0000) // if space, echo character, else ignore
+	*(JTAG_UART_ptr) = c;
+}
+
+void do_jtag(int a, int b, int c, int d){
+	//Used to place JTAG
+		char text_string[32];	
+		text_string[1]='y';
+		text_string[2] = ' ';
+		text_string[3]='=';
+		text_string[4]=' ';
+		text_string[5] = get_char(a);
+		text_string[6]='*';
+		text_string[7]='x';
+		text_string[8]='^';
+		text_string[9]='3';
+		text_string[10]=' ';
+		text_string[11]='+';
+		text_string[12]=' ';
+		text_string[13]=get_char(b);
+		text_string[14]='*';
+		text_string[15]='x';
+		text_string[16]='^';
+		text_string[17]='2';
+		text_string[18]=' ';
+		text_string[19]='+';
+		text_string[20]=' ';
+		text_string[21]=get_char(c);
+		text_string[22]='*';
+		text_string[23]='x';
+		text_string[24]=' ';
+		text_string[25]='+';
+		text_string[26]=' ';
+		text_string[27]=get_char(d);
+		text_string[28]='\n';
+		text_string[29]='>';
+		text_string[30]='\0';
+	
+	for (int i=0; i <31; i++){
+			put_jtag (text_string[i]);
+	}
+}
+char get_char(int num){
+	switch(num){
+		case 0:
+			return '0';
+		case 1:
+			return '1';
+		case 2:
+			return '2';
+		case 3:
+			return '3';
+		case 4:
+			return '4';
+		case 5:
+			return '5';
+		case 6:
+			return '6';
+		case 7:
+			return '7';
+		case 8:
+			return '8';
+		case 9:
+			return '9';
+		
+	}
+}
+
+void play_wave(int y[320]){
+	volatile int * audio_ptr = (int *)0xFF203040; //base of audio port
+	
+	//used for the playback 
+	int fifospace;
+	int left_buffer[BUF_SIZE];
+	int right_buffer[BUF_SIZE];
+	
+	int y_index =0;
+	for(int i =0; i <80000; i++){
+		if(i%250==0){
+			y_index++;
+		}
+		left_buffer[i] = y[y_index]*1000;
+		right_buffer[i] = y[y_index]*1000;
+	} 
+	
+	for(int i =0; i <80000; i++){
+		*(audio_ptr + 2) = left_buffer[i];
+		*(audio_ptr + 3) = right_buffer[i];
+	} 
+	
+}
 short int make_color(short int r, short int g, short int b){
-	//combine the r,g,b values into the color code
-	short int color = (r<<11) +(g<<5) +b; 
+	short int color = (r<<11) +(g<<5) +b;
 	return color;
 }
 int upper_hex_bits(int a){
