@@ -167,9 +167,9 @@ int main(void) {
 					red_color =0;
 				}
 			}else if(KEY_value == 8){
-				short int red_color =  0;
-				short int blue_color = 0;
-				short int green_color =0;
+				red_color =  0;
+				blue_color = 0;
+				green_color =0;
 				a =0;
 				b=0;
 				c=0;
