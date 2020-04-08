@@ -529,7 +529,9 @@ void draw_line(int x0, int y0, int x1, int y1, short int color) {
 }
 
 void plot_pixel(int x, int y, short int color) {
+	if(x>=0 && x<320 && y >=0 && y<240){
     *(short int *)(pixel_buffer_start + (y << 10) + (x << 1)) = color;
+	}
 }
 
 void swap(int *a, int *b) {
