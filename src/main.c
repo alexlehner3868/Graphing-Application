@@ -214,7 +214,7 @@ int main(void) {
 				y[i] += 3* x * power((1-x), 2) *p[1];
 				y[i] += 3 * power(x,2) * (1-x) * p[2];
 				y[i] += power(x,3) *p[3];
-				y[i] /=900000;
+				y[i] /=1000000;
 				y[i] =120 - y[i];	
 				y[i] = (int) y[i];
 				x= x+0.1254;
@@ -268,7 +268,7 @@ int main(void) {
 		clear_screen();
 		draw_axis();
 		draw_graph(y, color);
-		//play_wave(y);
+		play_wave(y);
 		do_jtag(a, b, c, d);
 		color_change =false;
 		changed = false;
@@ -290,39 +290,39 @@ void put_jtag( char c ){ //Function taken from intel FPGA University Program Man
 
 void do_jtag(int a, int b, int c, int d){
 	//Used to place JTAG
-		char text_string[32];	
-		text_string[1]='y';
-		text_string[2] = ' ';
-		text_string[3]='=';
-		text_string[4]=' ';
-		text_string[5] = get_char(a);
-		text_string[6]='*';
-		text_string[7]='x';
-		text_string[8]='^';
-		text_string[9]='3';
-		text_string[10]=' ';
-		text_string[11]='+';
-		text_string[12]=' ';
-		text_string[13]=get_char(b);
-		text_string[14]='*';
-		text_string[15]='x';
-		text_string[16]='^';
-		text_string[17]='2';
-		text_string[18]=' ';
-		text_string[19]='+';
-		text_string[20]=' ';
-		text_string[21]=get_char(c);
-		text_string[22]='*';
-		text_string[23]='x';
-		text_string[24]=' ';
-		text_string[25]='+';
-		text_string[26]=' ';
-		text_string[27]=get_char(d);
-		text_string[28]='\n';
-		text_string[29]='>';
-		text_string[30]='\0';
+		char text_string[30];
+		text_string[0]='y';
+		text_string[1] = ' ';
+		text_string[2]='=';
+		text_string[3]=' ';
+		text_string[4] = get_char(a);
+		text_string[5]='*';
+		text_string[6]='x';
+		text_string[7]='^';
+		text_string[8]='3';
+		text_string[9]=' ';
+		text_string[10]='+';
+		text_string[11]=' ';
+		text_string[12]=get_char(b);
+		text_string[13]='*';
+		text_string[14]='x';
+		text_string[15]='^';
+		text_string[16]='2';
+		text_string[17]=' ';
+		text_string[18]='+';
+		text_string[19]=' ';
+		text_string[20]=get_char(c);
+		text_string[21]='*';
+		text_string[22]='x';
+		text_string[23]=' ';
+		text_string[24]='+';
+		text_string[25]=' ';
+		text_string[26]=get_char(d);
+		text_string[27]='\n';
+		text_string[28]='>';
+		text_string[29]='\0';
 	
-	for (int i=0; i <31; i++){
+	for (int i=0; i <30; i++){
 			put_jtag (text_string[i]);
 	}
 }
@@ -361,12 +361,12 @@ void play_wave(int y[320]){
 	int right_buffer[BUF_SIZE];
 	
 	int y_index =0;
-	for(int i =0; i <80000; i++){
+	for(int i =0; i <BUF_SIZE; i++){
 		if(i%250==0){
 			y_index++;
 		}
-		left_buffer[i] = y[y_index]*1000;
-		right_buffer[i] = y[y_index]*1000;
+		left_buffer[i] = y[y_index]*4095/2;
+		right_buffer[i] = y[y_index]*4095/2;
 	} 
 	
 	for(int i =0; i <80000; i++){
