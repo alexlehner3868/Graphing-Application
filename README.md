@@ -1,1 +1,1 @@
-# ece243-grapher
+# Graphing Application
