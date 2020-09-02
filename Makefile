@@ -1,25 +1,28 @@
-# -- Directories --
 # Root directory
 ROOT ?= .
-
 # Input directories
 INCLUDE ?= $(ROOT)/include
 SRC ?= $(ROOT)/src
+# Build directories
+BUILD ?= $(ROOT)/build
 
-
-# -- Files --
-# Input files
+# Prerequisites
 MAIN := $(SRC)/main.c
-INCLUDES := $(wildcard $(SRC)/*.h)
 SRCS := $(filter-out $(MAIN),$(wildcard $(SRC)/*.c))
+INCLUDES := $(wildcard $(SRC)/*.h)
+# Targets
+TARGET ?= $(BUILD)/$(shell basename "$(CURDIR)").c
 
-# Target files
-TARGET ?= $(ROOT)/$(shell basename "$(CURDIR)").c
+# Commands
+MKDIR = mkdir -p
+RM = rm -rfv
 
+# Build target file
+.PHONY: all
+all: $(TARGET)
 
-# -- Targets --
-# Combine all files
 $(TARGET):
+	@$(MKDIR) $(BUILD)
 	cat $(INCLUDES) $(SRCS) $(MAIN) | grep '#include <.*>' | uniq | sort >| $(TARGET)
 	@echo >> $(TARGET)
 	cat $(INCLUDES) $(SRCS) $(MAIN) | grep '#define' >> $(TARGET)
@@ -33,7 +36,7 @@ endif
 	cat $(MAIN) | grep -vE '#include|#define' >> $(TARGET)
 	@command -v clang-format &> /dev/null && clang-format -i $(TARGET)
 
-# Clean
+# Clean build directory
 .PHONY: clean
 clean:
-	rm -f $(TARGET)
+	@$(RM) $(BUILD)
